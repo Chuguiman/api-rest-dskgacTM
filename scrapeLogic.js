@@ -1,5 +1,4 @@
 const puppeteer = require("puppeteer");
-require("dotenv").config();
 const fs = require("fs");
 
 const prefijo = 50;
@@ -7,18 +6,7 @@ const codepais = "CR"; //Codigo de Pais
 const ngac = "2022-79"; //Numero de Gaceta
 
 const scrapeLogic = async (numexpdb, res) => {
-  const browser = await puppeteer.launch({
-    args: [
-      "--disable-setuid-sandbox",
-      "--no-sandbox",
-      "--single-process",
-      "--no-zygote",
-    ],
-    executablePath:
-      process.env.NODE_ENV === "production"
-        ? process.env.PUPPETEER_EXECUTABLE_PATH
-        : puppeteer.executablePath(),
-  });
+  const browser = await puppeteer.launch();
 
   try {
     const anocr = numexpdb.substring(0, 4);
