@@ -1,8 +1,12 @@
 const puppeteer = require("puppeteer");
 require("dotenv").config();
+const fs = require("fs");
 
-const scrapeLogic = async (res) => {
+const prefijo = 50;
+const codepais = "CR"; //Codigo de Pais
+const ngac = "2022-79"; //Numero de Gaceta
 
+const scrapeLogic = async (numexpdb, res) => {
   const browser = await puppeteer.launch({
     args: [
       "--disable-setuid-sandbox",
@@ -15,32 +19,71 @@ const scrapeLogic = async (res) => {
         ? process.env.PUPPETEER_EXECUTABLE_PATH
         : puppeteer.executablePath(),
   });
+
   try {
+    const anocr = numexpdb.substring(0, 4);
+    const expcr = numexpdb.substring(5);
+    const preexpcr = String(expcr).padStart(9, "0");
+    const prenumber = prefijo + anocr + preexpcr;
+
+    const exp = codepais + prenumber;
+    const url = "https://www.tmdn.org/tmview/api/trademark/detail/" + exp;
+    console.log(url);
+
     const page = await browser.newPage();
+    await page.goto(url);
 
-    await page.goto("https://developer.chrome.com/");
+    const allResultsSelector = "body";
 
-    // Set screen size
-    await page.setViewport({ width: 1080, height: 1024 });
+    await page.waitForSelector(allResultsSelector, {
+      visible: true,
+    });
 
-    // Type into search box
-    await page.type(".search-box__input", "automate beyond recorder");
+    const resultsSelector = 'pre[style="word-wrap: break-word; white-space: pre-wrap;"]';
+    await page.waitForSelector(resultsSelector);
 
-    // Wait and click on first result
-    const searchResultSelector = ".search-box__link";
-    await page.waitForSelector(searchResultSelector);
-    await page.click(searchResultSelector);
+    const textoHtml = await page.evaluate((resultsSelector) => {
+      const contentHtml = Array.from(document.querySelectorAll(resultsSelector));
+      return contentHtml.map((content) => {
+        const contenido = content.textContent.trim();
+        return contenido;
+      });
+    }, resultsSelector);
 
-    // Locate the full title with a unique string
-    const textSelector = await page.waitForSelector(
-      "text/Customize and automate"
-    );
-    const fullTitle = await textSelector.evaluate((el) => el.textContent);
+    let resJSON = JSON.parse(textoHtml);
+    const urlImagen = resJSON.tradeMark.markImageURI;
 
-    // Print the full title
-    const logStatement = `The title of this blog post is ${fullTitle}`;
-    console.log(logStatement);
-    res.send(logStatement);
+    if (urlImagen) {
+      var viewSource = await page.goto(urlImagen);
+
+      const allResultsSelector2 = "body";
+      await page.waitForSelector(allResultsSelector2, {
+        visible: true,
+      });
+
+      const resultsSelector2 = "img";
+      await page.waitForSelector(resultsSelector2);
+
+      fs.writeFile("./exps/" + exp + ".jpeg", await viewSource.buffer(), function (err) {
+        if (err) {
+          return console.log(err);
+        }
+        console.log("The file was saved!");
+      });
+    }
+
+    console.log("\n ⚡️⚡️ Descarga exitosa ⚡️⚡️");
+
+    await browser.close();
+
+    const carpeta = "exps/" + codepais + "/" + ngac + "/";
+    const nameFileJson = carpeta + exp + ".json";
+
+    // Crear la carpeta si no existe
+    fs.mkdirSync(carpeta, { recursive: true });
+
+    fs.writeFileSync(nameFileJson, JSON.stringify(resJSON));
+    res.send(`JSON guardado como: ${nameFileJson}`);
   } catch (e) {
     console.error(e);
     res.send(`Something went wrong while running Puppeteer: ${e}`);
