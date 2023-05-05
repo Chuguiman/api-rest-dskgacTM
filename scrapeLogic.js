@@ -1,5 +1,6 @@
 const puppeteer = require("puppeteer");
 const fs = require("fs");
+require("dotenv").config();
 
 const scrapeLogic = async (numexpdb, prefijo, codepais, ngac, res) => {
 
@@ -10,6 +11,10 @@ const scrapeLogic = async (numexpdb, prefijo, codepais, ngac, res) => {
       "--no-sandbox",
       "--disable-notifications", 
     ],
+    executablePath:
+      process.env.NODE_ENV === "production"
+        ? process.env.PUPPETEER_EXECUTABLE_PATH
+        : puppeteer.executablePath(),
   });
 
   try {
