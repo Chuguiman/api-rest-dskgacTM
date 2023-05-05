@@ -1,12 +1,16 @@
 const puppeteer = require("puppeteer");
 const fs = require("fs");
 
-const prefijo = 50;
-const codepais = "CR"; //Codigo de Pais
-const ngac = "2022-79"; //Numero de Gaceta
+const scrapeLogic = async (numexpdb, prefijo, codepais, ngac, res) => {
 
-const scrapeLogic = async (numexpdb, res) => {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    headless: "new",
+    args: [
+      "--disable-setuid-sandbox",
+      "--no-sandbox",
+      "--disable-notifications", 
+    ],
+  });
 
   try {
     const anocr = numexpdb.substring(0, 4);
@@ -43,20 +47,27 @@ const scrapeLogic = async (numexpdb, res) => {
 
     if (urlImagen) {
       var viewSource = await page.goto(urlImagen);
-
+    
       const allResultsSelector2 = "body";
       await page.waitForSelector(allResultsSelector2, {
         visible: true,
       });
-
+    
       const resultsSelector2 = "img";
       await page.waitForSelector(resultsSelector2);
-
-      fs.writeFile("./exps/" + exp + ".jpeg", await viewSource.buffer(), function (err) {
+    
+      const imgFolderPath = `exps/${codepais}/${ngac}/imgs/`;
+      const imgFilePath = `${imgFolderPath}${exp}.jpeg`;
+    
+      if (!fs.existsSync(imgFolderPath)) {
+        fs.mkdirSync(imgFolderPath, { recursive: true });
+      }
+    
+      fs.writeFile(imgFilePath, await viewSource.buffer(), function (err) {
         if (err) {
           return console.log(err);
         }
-        console.log("The file was saved!");
+        console.log("The image file was saved!");
       });
     }
 
